@@ -1,0 +1,35 @@
+#!/bin/bash
+
+FILE="${HOME}/.gnome-extensions"
+
+ACTION="$1"
+ACTION_SAVE="save"
+ACTION_RESTORE="restore"
+
+function save() {
+	local EXTENSIONS=$(gsettings get org.gnome.shell enabled-extensions)
+	echo "$EXTENSIONS" > "$FILE"
+	echo "Saved extensions: ${EXTENSIONS} to ${FILE}."
+}
+
+function restore() {
+	if [ ! -f "$FILE" ]
+	then
+		echo "Nothing to restore. Use: $0 save."
+	fi
+	local EXTENSIONS=$(cat "$FILE")
+	gsettings set org.gnome.shell enabled-extensions "$EXTENSIONS"
+	echo "Restored extensions: ${EXTENSIONS} from ${FILE}."
+}
+
+case "$ACTION" in
+	"$ACTION_SAVE")
+		save
+	;;
+	"$ACTION_RESTORE")
+		restore
+	;;
+	*)
+		echo "Use: $0 [save|restore]"
+	;;
+esac
