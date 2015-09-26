@@ -1,0 +1,9 @@
+[Unit]
+Description=nct6775_fancontrol
+
+[Service]
+ExecStart=/usr/bin/nct6775_fancontrol
+
+[Install]
+Alias=nct6775_fancontrol.service
+
