@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Compiz + Docky
+Comment=This session logs you into Compiz + Docky
+Exec=/etc/X11/Sessions/compiz-docky
+TryExec=/etc/X11/Sessions/compiz-docky
+# no icon yet, only the top three are currently used
+Icon=
+Type=Application
