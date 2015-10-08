@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=Usb Sound Volume Restore
+Exec=usb-sound-volume-restore
+Icon=system-run

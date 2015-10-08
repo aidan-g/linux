@@ -1,0 +1,8 @@
+#!/bin/sh
+PAYLOAD="amixer -D pulse sset Master 50%"
+if [ "$USER" = "aidan" ]
+then
+	$PAYLOAD
+else
+	echo "sleep 1; su aidan -c \"${PAYLOAD}\"" | at now
+fi

@@ -1,0 +1,6 @@
+SUBSYSTEM!="sound", GOTO="usb_audio_end"
+ACTION!="add", GOTO="usb_audio_end"
+
+DEVPATH=="/devices/*/usb?/*/sound/card?", RUN+="/usr/bin/usb-sound-volume-restore"
+
+LABEL="usb_audio_end"
