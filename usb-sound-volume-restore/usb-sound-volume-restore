@@ -1,8 +1,21 @@
 #!/bin/sh
-PAYLOAD="amixer -D pulse sset Master 50%"
-if [ "$USER" = "aidan" ]
+
+if [ ! "$USER" = "aidan" ]
 then
-	$PAYLOAD
-else
-	echo "sleep 1; su aidan -c \"${PAYLOAD}\"" | at now
+	echo "Scheduling volume.."
+	echo "sleep 1; su aidan -c "$0"" | at now
+	echo "Done."
+	exit 0
 fi
+
+VOLUME=$(amixer -D pulse sget Master | grep -Eo '[0-9]+%' | head -n 1);
+
+if [ ! $VOLUME == '100%' ]
+then
+	echo "Volume isn't 100%. Nothing to do."
+	exit 0
+fi
+
+echo "Setting volume to 50%.."
+amixer -D pulse sset Master 50%
+echo "Done."
