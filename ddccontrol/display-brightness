@@ -1,0 +1,117 @@
+#!/bin/sh
+
+if [ ! -f $(which ddccontrol) ]
+then
+	echo "Fail: ddccontrol is required."
+	exit 1
+fi
+
+
+#Instructions.
+function usage()
+{
+	echo "Use: $0 [-i|-d] [percent] -t [device] -c [control]"
+	echo "-i Increment brightness by percent."
+	echo "-d Decrement brightness by percent."
+	exit 1
+}
+
+#Some constants.
+DEVICE_NONE="none"
+MODE_NONE="none"
+MODE_INC="inc"
+MODE_DEC="dec"
+PERCENT_NONE="0"
+CONTROL_NONE="0x0"
+
+MODE="$MODE_NONE"
+PERCENT="$PERCENT_NONE"
+DEVICE="$DEVICE_NONE"
+CONTROL="$CONTROL_NONE"
+
+#Decide mode.
+while getopts "i:d:t:c:" OPT
+do
+	case "$OPT" in
+		"i")
+			MODE="$MODE_INC"
+			PERCENT="$OPTARG"
+		;;
+		"d")
+			MODE="$MODE_DEC"
+			PERCENT="$OPTARG"
+		;;
+		"t")
+			DEVICE="$OPTARG"
+		;;
+		"c")
+			CONTROL="$OPTARG"
+		;;
+		*)
+			usage
+		;;
+	esac
+done
+
+if [ "$DEVICE" = "$DEVICE_NONE" ] || [ -z "$DEVICE" ] || \
+   [ "$MODE" = "$MODE_NONE" ] || [ -z "$MODE" ] || \
+   [ "$PERCENT" = "$PERCENT_NONE" ] || [ -z "$PERCENT" ] || \
+   [ "$CONTROL" = "$CONTROL_NONE" ] || [ -z "$CONTROL" ]
+then
+	usage
+fi
+
+echo "Reading control ${CONTROL} of ${DEVICE}.."
+
+DDCCONTROL=$(ddccontrol -r "$CONTROL" "$DEVICE")
+
+if [ $? -ne 0 ]
+then
+	"Fail: ddccontrol ${DDCCONTROL}"
+	exit 1
+fi
+
+READING=$(echo "$DDCCONTROL" | tail -n 1)
+
+CURRENT=$(echo "$READING" | cut -d"/" -f2)
+MAX=$(echo "$READING" | cut -d"/" -f3 | cut -d" " -f1)
+
+echo "Control ${CONTROL}: Current ${CURRENT} Max ${MAX}."
+
+STEP=$((($MAX / 100) * $PERCENT))
+
+echo "Step ${STEP}."
+
+case "$MODE" in
+	"$MODE_INC")
+		VALUE=$(($CURRENT + $STEP))
+	;;
+	"$MODE_DEC")
+		VALUE=$(($CURRENT - $STEP))
+	;;
+esac
+
+echo "Target ${VALUE}."
+
+if [ $VALUE -lt 0 ]
+then
+	VALUE="0"
+	echo "Target was less than or equal to zero. Fixing."
+fi
+
+if [ $VALUE -gt $MAX ]
+then
+	VALUE="$MAX"
+	echo "Target was greater than then maximum. Fixing."
+fi
+
+DDCCONTROL=$(ddccontrol -r "$CONTROL" -w "$VALUE" "$DEVICE")
+
+if [ $? -ne 0 ]
+then
+	echo "Fail: ddccontrol ${DDCCONTROL}"
+	exit 1
+fi
+
+echo "Finished without error."
+exit 1
