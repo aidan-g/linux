@@ -1,5 +1,12 @@
 #!/bin/sh
 
+ATICONFIG="/opt/bin/aticonfig"
+
+if [ ! -f "$ATICONFIG" ]
+then
+	echo "aticonfig is required. I expect it to be at ${ATICONFIG}."
+fi
+
 CONFIG="/etc/conf.d/ati_clocks.conf"
 
 if [ ! -f "$CONFIG" ]
@@ -12,14 +19,14 @@ source /etc/conf.d/ati_clocks.conf
 
 if [ ! -z "$ATI_CLOCKS" ]
 then
-	aticonfig --adapter=0 --od-setclocks "$ATI_CLOCKS"
+	$ATICONFIG --adapter=0 --od-setclocks "$ATI_CLOCKS"
 else
 	echo "Speeds are not configured."
 fi
 
 if [ ! -z "$ATI_FAN" ]
 then
-	aticonfig --pplib-cmd "set fanspeed 0 ${ATI_FAN}"
+	$ATICONFIG --pplib-cmd "set fanspeed 0 ${ATI_FAN}"
 else
 	echo "Fan is not configured."
 fi
