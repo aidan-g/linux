@@ -1,0 +1,93 @@
+#!/bin/sh
+
+action_none="none"
+action_load="load"
+action_unload="unload"
+
+action="${action_none}"
+
+echo "Event: $1 $2"
+
+case "$1 $2" in
+	"pre suspend"|"pre hibernate"|"pre hybrid-sleep")
+		action="${action_unload}"
+	;;
+        "post suspend"|"post hibernate"|"post hybrid-sleep")
+                action="${action_load}"
+        ;;
+	*)
+		echo "Event was not handled."
+		exit 0
+esac
+
+echo "Event was handled. Action: ${action}."
+
+config_dir="/etc/pm/config.d"
+
+if [ -d "${config_dir}" ]
+then
+	for file in ${config_dir}/*
+	do
+		echo "Loading config file ${file}."
+		source "$file"
+	done
+else
+	echo "Config dir ${config_dir} does not exist."
+	exit 0
+fi
+
+if [ -z "$SUSPEND_MODULES" ]
+then
+	echo "No modules were configured."
+	exit 0
+fi
+
+echo "Modules: ${SUSPEND_MODULES}."
+
+function do_unload()
+{
+	for module in ${SUSPEND_MODULES}
+	do
+		loaded=$(lsmod | grep "$module")
+		if [ -z "$loaded" ]
+		then
+			echo "Module ${module} is not loaded."
+			continue
+		fi
+		echo "Unloading module ${module}."
+		rmmod "$module"
+		if [ ! "$?" = "0" ]
+		then
+			echo "Failed to unload module ${module}."
+		fi
+	done
+}
+
+function do_load()
+{
+        for module in ${SUSPEND_MODULES}
+        do
+                loaded=$(lsmod | grep "$module")
+                if [ ! -z "$loaded" ]
+                then
+                        echo "Module ${module} is already loaded."
+                        continue
+                fi
+                echo "Loading module ${module}."
+                modprobe "$module"
+                if [ ! "$?" = "0" ]
+                then
+                        echo "Failed to load module ${module}."
+                fi
+        done
+
+}
+
+case "${action}" in
+	"${action_unload}")
+		do_unload
+	;;
+	"${action_load}")
+		do_load
+	;;
+esac

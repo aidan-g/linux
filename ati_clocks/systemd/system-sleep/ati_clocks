@@ -1,0 +1,15 @@
+#!/bin/sh
+
+doclocks=false
+
+case "$1 $2" in
+        "post suspend"|"post hibernate"|"post hybrid-sleep")
+                doclocks=true
+        ;;
+esac
+
+if [ "$doclocks" = true ]
+then
+        echo "Restarting ati_clocks.."
+        systemctl restart ati_clocks.service
+fi

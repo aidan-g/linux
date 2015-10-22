@@ -1,0 +1,15 @@
+#!/bin/sh
+
+dofans=false
+
+case "$1 $2" in
+	"post suspend"|"post hibernate"|"post hybrid-sleep")
+		dofans=true
+	;;
+esac
+
+if [ "$dofans" = true ]
+then
+	echo "Restarting nct6775_fancontrol.."
+	systemctl restart nct6775_fancontrol.service
+fi

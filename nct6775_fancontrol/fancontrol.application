@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=NCT 6775 Smart Fan VI
+Exec=sudo nct6775_fancontrol
+Icon=system-run

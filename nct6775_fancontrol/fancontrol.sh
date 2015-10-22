@@ -46,8 +46,9 @@ echo "$MODULE sensors found at ${SENSOR_DIR}."
 
 #Smart fan mode.
 MODE_SMART_FAN_IV=5
-#The fans to control. I skip 2 as it's a pump.
-PWM_DEVICES=(1 3 4 5)
+
+#The fans to control.
+PWM_DEVICES=(1 2 3 4 5 6)
 
 #Enable smart fan control.
 
@@ -64,8 +65,8 @@ echo "Smart fan control enabled."
 echo "Setting temperature points.."
 
 #My fans stall below 90 and I think 255 is the maximum for most pwm controllers.
-PWM_TEMPS=(32000 35000 40000 50000 60000)
-PWM_LEVELS=(90 115 150 185 255)
+PWM_TEMPS=(35000 40000 50000 60000 70000)
+PWM_LEVELS=(30 70 120 170 255)
 
 #For each device.
 for DEVICE in "${PWM_DEVICES[@]}"
