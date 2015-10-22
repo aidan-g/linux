@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=ATI Clocks/Fans
+Exec=sudo ati_clocks
+Icon=system-run

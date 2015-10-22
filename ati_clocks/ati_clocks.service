@@ -1,0 +1,10 @@
+[Unit]
+Description=ati_clocks
+
+[Service]
+ExecStart=/usr/bin/ati_clocks
+
+[Install]
+WantedBy=multi-user.target
+Alias=ati_clocks.service
+
