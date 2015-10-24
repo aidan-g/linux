@@ -1,0 +1,97 @@
+#!/bin/sh
+
+function usage()
+{
+	echo "Use: $0 [start|stop] [path]"
+}
+
+MODE="$1"
+MODE_START="start"
+MODE_STOP="stop"
+
+if [ -z "$MODE" ]
+then
+	usage
+	exit 1
+fi
+
+DIR="$2"
+
+if [ -z "$DIR" ]
+then
+	usage
+	exit 1
+fi
+
+if [ ! -d "$DIR" ]
+then
+	echo "The specified directory ${DIR} does not exist."
+	exit 1
+fi
+
+function is_mounted()
+{
+	local DIR="$1"
+	mountpoint -q "$DIR"
+}
+
+function start()
+{
+	echo "Mounting filesystems.."
+	
+	is_mounted "${DIR}/dev" || mount -o rbind /dev "${DIR}/dev" && mount --make-rslave "${DIR}/dev"
+	is_mounted "${DIR}/dev/pts" || mount -o bind /dev/pts "${DIR}/dev/pts"
+	is_mounted "${DIR}/dev/shm" || mount -o bind /dev/shm "${DIR}/dev/shm"
+	is_mounted "${DIR}/proc" || mount -t proc proc "${DIR}/proc"
+	is_mounted "${DIR}/sys" || mount -o rbind /sys "${DIR}/sys" && mount --make-rslave "${DIR}/sys"
+	is_mounted "${DIR}/tmp" || mount -o bind /tmp "${DIR}/tmp"
+	is_mounted "${DIR}/lib/modules" || mount -o bind /lib/modules "${DIR}/lib/modules"
+	is_mounted "${DIR}/usr/src" || mount -o bind /usr/src "${DIR}/usr/src"
+	is_mounted "${DIR}/usr/portage" || mount -o bind /usr/portage "${DIR}/usr/portage"
+	is_mounted "${DIR}/var/lib/layman" || mount -o bind /var/lib/layman "${DIR}/var/lib/layman"
+
+	echo "Copying files.."
+
+	cp -pf /etc/resolv.conf "${DIR}/etc" 
+	cp -pf /etc/passwd "${DIR}/etc"
+	cp -pf /etc/shadow "${DIR}/etc"
+	cp -pf /etc/group "${DIR}/etc"
+	cp -pf /etc/gshadow "${DIR}/etc"
+	cp -pf /etc/hosts "${DIR}/etc"
+	cp -Ppf /etc/localtime "${DIR}/etc"
+
+	echo "Done with ${DIR}."
+	exit 0
+}
+
+function stop()
+{
+	echo "Unmounting filesystems.."
+	
+	is_mounted "${DIR}/dev/pts" && umount "${DIR}/dev/pts"
+	is_mounted "${DIR}/dev/shm" && umount "${DIR}/dev/shm"
+	is_mounted "${DIR}/dev" && umount "${DIR}/dev"
+	is_mounted "${DIR}/proc" && umount "${DIR}/proc"
+	is_mounted "${DIR}/sys" && umount "${DIR}/sys"
+	is_mounted "${DIR}/tmp" && umount "${DIR}/tmp"
+	is_mounted "${DIR}/usr/src" && umount "${DIR}/usr/src"
+	is_mounted "${DIR}/lib/modules" && umount "${DIR}/lib/modules"
+	is_mounted "${DIR}/usr/portage" && umount "${DIR}/usr/portage"
+	is_mounted "${DIR}/var/lib/layman" && umount "${DIR}/var/lib/layman"
+
+        echo "Done with ${DIR}."
+        exit 0
+}
+
+case "$MODE" in
+        "$MODE_START")
+                start
+        ;;
+        "$MODE_STOP")
+                stop
+        ;;
+        *)
+                usage
+                exit 1
+        ;;
+esac
