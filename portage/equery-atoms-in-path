@@ -1,0 +1,10 @@
+#!/bin/sh
+
+if [ -z "$1" ]
+then
+	echo "Use: $0 [path]"
+	echo "Expansion is ok."
+	exit 1
+fi
+
+equery --no-color b "$1" | sort | uniq | xargs printf "=%s\n"

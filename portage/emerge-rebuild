@@ -1,0 +1,40 @@
+#!/bin/bash
+
+if [ "$#" -eq 0 ]
+then
+	echo "Use: $0 [package-1] [package-2] [package-n]"
+	exit 1
+fi
+
+star="*"
+
+for package in "$@"
+do
+	path=$(echo "$package" | cut -d"/" -f1)
+	if [ -z "$path" ]
+	then
+		path="$star"
+	fi
+	name=$(echo "$package" | cut -d"/" -f2)
+	if [ -z "$name" ]
+	then
+		name="$star"
+	fi
+	if [ "$path" == "$name" ]
+	then
+		path="$star"
+	fi
+	if [ "$path" == "$star" ] && [ "$name" == "$star" ]
+	then
+		echo "Not enough package information. At least a group or name is required."
+		exit 1
+	fi
+	path=$(echo "$path" | sed 's/^=//')
+	echo "Running: find /usr/portage/packages -path \"*/${path}/*\" -name \"${name}*\""
+	while read binary
+	do
+		rm -i "$binary" < /dev/tty
+	done < <(find /usr/portage/packages -path "*/${path}/*" -name "${name}*")
+done
+
+emerge "$@"

@@ -1,0 +1,3 @@
+#!/bin/sh
+
+emerge --update --newuse --deep @world --with-bdeps=y
