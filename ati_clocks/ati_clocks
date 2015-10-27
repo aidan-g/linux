@@ -1,32 +1,78 @@
 #!/bin/sh
 
+LOG_FILE="/var/log/$(basename $0).log"
+
+if [ -f "$LOG_FILE" ]
+then
+        rm "$LOG_FILE"
+fi
+
+function log()
+{
+        MESSAGE="[$0]: $*"
+        echo "$MESSAGE"
+        echo "$MESSAGE" >> "$LOG_FILE"
+}
+
+if [ -z "$DISPLAY" ]
+then
+        if [ -z "$1" ]
+        then
+		log "Unable to determine DISPLAY."
+		log "Use: $0 [:DISPLAY]"
+		exit 1		
+        else
+                export DISPLAY="$1"
+        fi
+fi
+
 ATICONFIG="/opt/bin/aticonfig"
 
 if [ ! -f "$ATICONFIG" ]
 then
-	echo "aticonfig is required. I expect it to be at ${ATICONFIG}."
+	log "aticonfig is required. I expect it to be at ${ATICONFIG}."
+	exit 1
 fi
+
+log "Checking configuration.."
 
 CONFIG="/etc/conf.d/ati_clocks.conf"
 
 if [ ! -f "$CONFIG" ]
 then
-	echo "Configuration file does not exist at ${CONFIG}."
+	log "Configuration file does not exist at ${CONFIG}."
 	exit 1
 fi
 
 source /etc/conf.d/ati_clocks.conf
 
+function do_aticonfig()
+{
+	$ATICONFIG "$@"
+	if [ ! "$?" = "0" ]
+        then
+                log "$ATICONFIG failed."
+                exit 1
+        fi
+	log "$ATICONFIG succeeded."
+	
+}
+
 if [ ! -z "$ATI_CLOCKS" ]
 then
-	$ATICONFIG --adapter=0 --od-setclocks "$ATI_CLOCKS"
+	do_aticonfig --adapter=0 --od-setclocks "$ATI_CLOCKS"
 else
-	echo "Speeds are not configured."
+	log "Speeds are not configured."
+	exit 1
 fi
 
 if [ ! -z "$ATI_FAN" ]
 then
-	$ATICONFIG --pplib-cmd "set fanspeed 0 ${ATI_FAN}"
+	do_aticonfig --pplib-cmd "set fanspeed 0 ${ATI_FAN}"
 else
-	echo "Fan is not configured."
+	log "Fan is not configured."
+	exit 1
 fi
+
+log "All done."
+exit 0
