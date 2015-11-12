@@ -1,0 +1,79 @@
+#!/bin/sh
+
+CONFIG="/etc/conf.d/backup.conf"
+
+if [ ! -f "$CONFIG" ]
+then
+	echo "Please add a TAG variable to ${CONFIG}."
+	exit 1
+fi
+
+source "$CONFIG"
+
+if [ -z "$TAG" ]
+then
+	echo "Config file $CONFIG does not contain a TAG variable."
+fi
+
+STAMP="$(date +%F)_$(date +%T)_$TAG"
+
+DESTINATION="/data/backup/$(hostname)/${STAMP}/"
+
+if [ -d "$DESTINATION" ]
+then
+	echo "Destination $DESTINATION already exists."
+	exit 1
+fi
+
+for DELAY in $(seq 1 5 | sort -r)
+do
+	echo "Backup up to ${DESTINATION} in ${DELAY}.."
+	sleep 1
+done
+
+STAGING="${DESTINATION}staging"
+
+mkdir -p "$STAGING"
+
+TARGETS="
+/bin
+/boot
+/etc
+/lib32
+/lib64
+/opt
+/root
+/sbin
+/usr
+/var
+"
+echo "Staging files.."
+
+for TARGET in $TARGETS
+do
+	echo "Staging target ${TARGET}.."
+	rsync -aAX \
+		-H \
+		--info=progress2 \
+		--numeric-ids \
+		--exclude "/usr/portage/*" \
+		--exclude "/var/tmp/*" \
+		--exclude "/usr/src/*" \
+		"$TARGET" "$STAGING"
+done
+
+echo "Creating archive ${ARCHIVE}.."
+
+ARCHIVE="backup.tar.gz"
+
+cd "$STAGING"
+
+tar cvzf "../$ARCHIVE" .
+
+cd -
+
+echo "Cleaning up.."
+
+rm -rf "$STAGING"
+
+echo " All done."
