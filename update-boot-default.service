@@ -1,0 +1,14 @@
+[Unit]
+Description=update-boot-default
+After=suspend.target hibernate.target sysinit.target hybrid-sleep.target
+
+[Service]
+ExecStart=/usr/bin/update-boot-default
+Type=oneshot
+
+[Install]
+Alias=update-boot-default.service
+WantedBy=sysinit.target
+WantedBy=suspend.target
+WantedBy=hibernate.target
+WantedBy=hybrid-sleep.target

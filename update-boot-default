@@ -1,0 +1,54 @@
+#!/bin/sh
+
+LOG_FILE="/var/log/$(basename $0).log"
+
+if [ -f "$LOG_FILE" ]
+then
+        rm "$LOG_FILE"
+fi
+
+function log()
+{
+        MESSAGE="[$(date)] => [$0]: $*"
+        echo "$MESSAGE"
+        echo "$MESSAGE" >> "$LOG_FILE"
+}
+
+
+GRUB="/boot/grub/grub.cfg"
+CONFIG="/etc/init.d/boot-number.conf"
+
+function usage()
+{
+        log "Please configure ${CONFIG} with a NUMBER variable."
+	exit 1
+
+}
+
+if [ ! -f "$GRUB" ]
+then
+	log "$CONFIG was not found. Is /boot mounted?"
+	exit 1
+fi
+
+if [ ! -f "$CONFIG" ]
+then
+	usage
+fi
+
+source "$CONFIG"
+
+if [ -z "$NUMBER" ]
+then
+	usage
+fi
+
+log "Backup up ${GRUB}.."
+
+cp "$GRUB" /root
+
+log "Updating grub default to ${NUMBER}.."
+
+sed -ie "s/^\(set default=\"\)\(.\+\)\(\"\)$/\1${NUMBER}\3/" "$GRUB"
+
+log "All done."
