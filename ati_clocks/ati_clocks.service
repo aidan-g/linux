@@ -1,10 +1,15 @@
 [Unit]
 Description=ati_clocks
+After=suspend.target hibernate.target sysinit.target hybrid-sleep.target
+Requires=display-manager.service
 
 [Service]
 ExecStart=/usr/bin/ati_clocks
+Type=oneshot
 
 [Install]
-WantedBy=multi-user.target
 Alias=ati_clocks.service
-
+WantedBy=sysinit.target
+WantedBy=suspend.target
+WantedBy=hibernate.target
+WantedBy=hybrid-sleep.target

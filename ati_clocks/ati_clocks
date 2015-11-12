@@ -9,29 +9,17 @@ fi
 
 function log()
 {
-        MESSAGE="[$0]: $*"
+        MESSAGE="[$(date)] => [$0]: $*"
         echo "$MESSAGE"
         echo "$MESSAGE" >> "$LOG_FILE"
 }
 
-if [ -z "$DISPLAY" ]
-then
-        if [ -z "$1" ]
-        then
-		log "Unable to determine DISPLAY."
-		log "Use: $0 [:DISPLAY]"
-		exit 1		
-        else
-                export DISPLAY="$1"
-        fi
-fi
 
 ATICONFIG="/opt/bin/aticonfig"
 
 if [ ! -f "$ATICONFIG" ]
 then
 	log "aticonfig is required. I expect it to be at ${ATICONFIG}."
-	exit 1
 fi
 
 log "Checking configuration.."
@@ -46,33 +34,87 @@ fi
 
 source /etc/conf.d/ati_clocks.conf
 
-function do_aticonfig()
-{
-	$ATICONFIG "$@"
-	if [ ! "$?" = "0" ]
-        then
-                log "$ATICONFIG failed."
-                exit 1
-        fi
-	log "$ATICONFIG succeeded."
+ATTEMPT=0
+ATTEMPTS=10
+
+while [ 1 = 1 ]
+do
+
+	ATTEMPT=$(($ATTEMPT + 1))
+
+	if [ "$ATTEMPT" = "$ATTEMPTS" ]
+	then
+		log "Failed after ${ATTEMPTS} attempts."
+		exit 1
+	else
+		if [ ! "$ATTEMPT" = 1 ]
+		then
+			log "Waiting a moment.."
+			sleep 1
+		fi
+	fi
+
+	SUCCESS=false
+
+	log "Attempt $ATTEMPT of ${ATTEMPTS}.."
+
+	if [ ! -z "$ATI_CLOCKS" ]
+	then
+		log "Setting clock speeds.."
+		SUCCESS=false
+		for DISPLAY_NUMBER in $(seq 0 5)
+		do
+			log "Trying display ${DISPLAY_NUMBER}.."
+			export DISPLAY=":$DISPLAY_NUMBER"
+			$ATICONFIG --adapter=0 --od-setclocks "$ATI_CLOCKS"
+			if [ ! "$?" = "0" ]
+			then
+				log "$ATICONFIG failed."
+				continue
+			fi
+			log "$ATICONFIG succeeded."
+			SUCCESS=true
+			break
+		done
+		if [ ! "$SUCCESS" = "true" ]
+		then
+			log "Failed to set clock speeds."
+		fi
+	else
+		log "Clock speeds are not configured."
+	fi
+
+	if [ ! -z "$ATI_FAN" ]
+	then
+		log "Setting fan speeds.."
+		SUCCESS=false
+		for DISPLAY_NUMBER in $(seq 0 5)
+		do
+			log "Trying display ${DISPLAY_NUMBER}.."
+			export DISPLAY=":$DISPLAY_NUMBER"
+			$ATICONFIG --pplib-cmd "set fanspeed 0 ${ATI_FAN}"
+                	if [ ! "$?" = "0" ]
+        	        then
+	                        log "$ATICONFIG failed."
+                        	continue
+                	fi
+        	        log "$ATICONFIG succeeded."
+			SUCCESS=true
+                	break
+		done
+		if [ ! "$SUCCESS" = "true" ]
+		then
+			log "Failed to set fan speeds."
+		fi
+	else
+		log "Fan speeds are not configured."
+	fi
 	
-}
-
-if [ ! -z "$ATI_CLOCKS" ]
-then
-	do_aticonfig --adapter=0 --od-setclocks "$ATI_CLOCKS"
-else
-	log "Speeds are not configured."
-	exit 1
-fi
-
-if [ ! -z "$ATI_FAN" ]
-then
-	do_aticonfig --pplib-cmd "set fanspeed 0 ${ATI_FAN}"
-else
-	log "Fan is not configured."
-	exit 1
-fi
+	if [ "$SUCCESS" = "true" ]
+	then
+		break
+	fi
+done
 
 log "All done."
 exit 0
