@@ -1,0 +1,15 @@
+[Unit]
+Description=nct6775_fancontrol
+After=suspend.target hibernate.target sysinit.target hybrid-sleep.target
+Requires=display-manager.service
+
+[Service]
+ExecStart=/usr/bin/nct6775_fancontrol
+Type=oneshot
+
+[Install]
+Alias=fancontrol.service
+WantedBy=sysinit.target
+WantedBy=suspend.target
+WantedBy=hibernate.target
+WantedBy=hybrid-sleep.target

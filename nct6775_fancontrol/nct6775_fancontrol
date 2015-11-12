@@ -1,0 +1,122 @@
+#!/bin/bash
+
+#A simple script to set a fixed temperature to pwm map to all fans.
+
+#Ensure sensors are loaded.
+
+LOG_FILE="/var/log/$(basename $0).log"
+
+if [ -f "$LOG_FILE" ]
+then
+	rm "$LOG_FILE"
+fi
+
+function log()
+{
+	MESSAGE="[$(date)] => [$0]: $*"
+	echo "$MESSAGE"
+	echo "$MESSAGE" >> "$LOG_FILE"
+}
+
+log "Checking configuration.."
+
+SENSOR_NAME="nct6791"
+MODULE="nct6775"
+LOADED=$(lsmod | grep $MODULE)
+
+if [ -z "$LOADED" ]
+then
+	log "Module $MODULE is not loaded, attempting to load it.."
+	/sbin/modprobe "$MODULE"
+	if [ $? -ne 0 ]
+	then
+		log "Failed to load the required module."
+		exit 1
+	fi
+fi
+
+log "Locating sensors for ${MODULE}.."
+
+SENSOR_DIR=""
+for HW_MON in /sys/class/hwmon/hwmon[0-9]
+do
+	log "Checking ${HW_MON}.."
+	if [ ! -f "$HW_MON/name" ]
+	then
+		if [ ! -f "$HW_MON/device/name" ]
+		then
+			continue
+		fi
+		HW_MON="${HW_MON}/device"
+	fi
+	NAME=$(cat "$HW_MON/name")
+	if [ "$NAME" != "$SENSOR_NAME" ]
+	then
+		continue
+	fi
+	SENSOR_DIR="${HW_MON}"
+	break
+done
+
+if [ -z "$SENSOR_DIR" ]
+then
+	log "Failed to locate the correct sensors."
+	exit 1
+fi
+
+log "$MODULE sensors found at ${SENSOR_DIR}."
+
+#Smart fan mode.
+MODE_SMART_FAN_IV=5
+
+#The fans to control.
+PWM_DEVICES=(1 2 3 4 5 6)
+
+#Enable smart fan control.
+
+log "Enabling smart fan control.."
+
+for DEVICE in "${PWM_DEVICES[@]}"
+do
+	NODE="$SENSOR_DIR/pwm${DEVICE}_enable"
+	log "Enabling smart fan control for pwm device ${NODE}.."
+	echo $MODE_SMART_FAN_IV > $NODE
+done
+
+log "Smart fan control enabled."
+log "Setting temperature points.."
+
+#My fans stall below 90 and I think 255 is the maximum for most pwm controllers.
+PWM_TEMPS=(35000 40000 50000 60000 70000)
+PWM_LEVELS=(30 70 120 170 255)
+
+#For each device.
+for DEVICE in "${PWM_DEVICES[@]}"
+do
+	log "Setting temperature points for pwm device ${DEVICE}.."
+
+	#For each temperature.
+	INDEX=1
+	for TEMP in "${PWM_TEMPS[@]}"
+	do
+		log "Setting temperature point $INDEX -> $TEMP for pwm device ${DEVICE}.."
+		NODE="$SENSOR_DIR/pwm${DEVICE}_auto_point${INDEX}_temp"
+		echo $TEMP > $NODE
+		INDEX=$(($INDEX + 1))
+	done
+
+	log "Setting pwm points for pwm device ${DEVICE}.."
+
+	#For each pwm.
+	INDEX=1
+	for LEVEL in "${PWM_LEVELS[@]}"
+	do
+		log "Setting pwm level $INDEX -> $LEVEL for pwm device ${DEVICE}.."
+		NODE="$SENSOR_DIR/pwm${DEVICE}_auto_point${INDEX}_pwm"
+		echo $LEVEL > $NODE
+		INDEX=$(($INDEX + 1))
+	done
+done
+
+log "All done."
+exit 0
