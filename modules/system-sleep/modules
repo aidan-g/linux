@@ -1,12 +1,27 @@
 #!/bin/sh
 
+LOG_FILE="/var/log/$(basename $0)_${1}_${2}.log"
+
+if [ -f "$LOG_FILE" ]
+then
+        rm "$LOG_FILE"
+fi
+
+function log()
+{
+        MESSAGE="[$(date)] => [$0]: $*"
+        echo "$MESSAGE"
+        echo "$MESSAGE" >> "$LOG_FILE"
+}
+
+
 action_none="none"
 action_load="load"
 action_unload="unload"
 
 action="${action_none}"
 
-echo "Event: $1 $2"
+log "Event: $1 $2"
 
 case "$1 $2" in
 	"pre suspend"|"pre hibernate"|"pre hybrid-sleep")
@@ -16,11 +31,11 @@ case "$1 $2" in
                 action="${action_load}"
         ;;
 	*)
-		echo "Event was not handled."
+		log "Event was not handled."
 		exit 0
 esac
 
-echo "Event was handled. Action: ${action}."
+log "Event was handled. Action: ${action}."
 
 config_dir="/etc/pm/config.d"
 
@@ -28,21 +43,21 @@ if [ -d "${config_dir}" ]
 then
 	for file in ${config_dir}/*
 	do
-		echo "Loading config file ${file}."
+		log "Loading config file ${file}."
 		source "$file"
 	done
 else
-	echo "Config dir ${config_dir} does not exist."
+	log "Config dir ${config_dir} does not exist."
 	exit 0
 fi
 
 if [ -z "$SUSPEND_MODULES" ]
 then
-	echo "No modules were configured."
+	log "No modules were configured."
 	exit 0
 fi
 
-echo "Modules: ${SUSPEND_MODULES}."
+log "Modules: ${SUSPEND_MODULES}."
 
 function do_unload()
 {
@@ -51,14 +66,14 @@ function do_unload()
 		loaded=$(lsmod | grep "$module")
 		if [ -z "$loaded" ]
 		then
-			echo "Module ${module} is not loaded."
+			log "Module ${module} is not loaded."
 			continue
 		fi
-		echo "Unloading module ${module}."
+		log "Unloading module ${module}."
 		rmmod "$module"
 		if [ ! "$?" = "0" ]
 		then
-			echo "Failed to unload module ${module}."
+			log "Failed to unload module ${module}."
 		fi
 	done
 }
@@ -70,14 +85,14 @@ function do_load()
                 loaded=$(lsmod | grep "$module")
                 if [ ! -z "$loaded" ]
                 then
-                        echo "Module ${module} is already loaded."
+                        log "Module ${module} is already loaded."
                         continue
                 fi
-                echo "Loading module ${module}."
+                log "Loading module ${module}."
                 modprobe "$module"
                 if [ ! "$?" = "0" ]
                 then
-                        echo "Failed to load module ${module}."
+                        log "Failed to load module ${module}."
                 fi
         done
 
