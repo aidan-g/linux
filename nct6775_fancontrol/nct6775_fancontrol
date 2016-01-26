@@ -20,7 +20,7 @@ function log()
 
 log "Checking configuration.."
 
-SENSOR_NAME="nct6791"
+SENSOR_NAME="nct6776"
 MODULE="nct6775"
 LOADED=$(lsmod | grep $MODULE)
 
@@ -70,7 +70,7 @@ log "$MODULE sensors found at ${SENSOR_DIR}."
 MODE_SMART_FAN_IV=5
 
 #The fans to control.
-PWM_DEVICES=(1 2 3 4 5 6)
+PWM_DEVICES=(1 2 3)
 
 #Enable smart fan control.
 
@@ -84,11 +84,23 @@ do
 done
 
 log "Smart fan control enabled."
+log "Setting temperature selector.."
+
+TEMP_INPUT=7
+
+for DEVICE in "${PWM_DEVICES[@]}"
+do
+        NODE="$SENSOR_DIR/pwm${DEVICE}_temp_sel"
+        log "Setting temperature selector for pwm device ${NODE}.."
+        echo $TEMP_INPUT > $NODE
+done
+
+log "Temperature selector enabled."
 log "Setting temperature points.."
 
 #My fans stall below 90 and I think 255 is the maximum for most pwm controllers.
 PWM_TEMPS=(35000 40000 50000 60000 70000)
-PWM_LEVELS=(30 70 120 170 255)
+PWM_LEVELS=(120 130 140 150 160) #Relaxed
 
 #For each device.
 for DEVICE in "${PWM_DEVICES[@]}"

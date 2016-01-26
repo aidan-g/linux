@@ -1,0 +1,3 @@
+#!/bin/sh
+
+dmesg | egrep -i "error|warning|fail|exception"

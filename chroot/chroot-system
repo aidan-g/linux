@@ -1,0 +1,158 @@
+#!/bin/sh
+
+function usage()
+{
+	echo "Use: $0 [start|stop] [path]"
+}
+
+MODE="$1"
+MODE_START="start"
+MODE_STOP="stop"
+
+if [ -z "$MODE" ]
+then
+	usage
+	exit 1
+fi
+
+DIR="$2"
+
+if [ -z "$DIR" ]
+then
+	usage
+	exit 1
+fi
+
+if [ ! -d "$DIR" ]
+then
+	echo "The specified directory ${DIR} does not exist."
+	exit 1
+fi
+
+function is_mounted()
+{
+	local DIR="$1"
+	mountpoint -q "$DIR"
+}
+
+
+HOME_USER="aidan"
+HOME_DIRECTORIES="Documents Downloads Music Pictures Videos Source"
+
+function start()
+{
+	echo "Mounting system filesystems.."
+	
+	is_mounted "${DIR}/dev" || \
+		mount -o rbind /dev "${DIR}/dev" && \
+			mount --make-rslave "${DIR}/dev"
+	is_mounted "${DIR}/dev/pts" || \
+		mount -o bind /dev/pts "${DIR}/dev/pts"
+	is_mounted "${DIR}/dev/shm" || \
+		mount -o bind /dev/shm "${DIR}/dev/shm"
+	is_mounted "${DIR}/proc" || \
+		mount -t proc proc "${DIR}/proc"
+	is_mounted "${DIR}/sys" || \
+		mount -o rbind /sys "${DIR}/sys" && \
+			mount --make-rslave "${DIR}/sys"
+	is_mounted "${DIR}/tmp" || \
+		mount -o bind /tmp "${DIR}/tmp"
+	is_mounted "${DIR}/run" || \
+		mount -o rbind /run "${DIR}/run" && \
+			mount --make-rslave "${DIR}/run"
+
+	echo "Mounting other filesystems.."
+
+	is_mounted "${DIR}/mnt/host" || \
+		mount -o bind / "${DIR}/mnt/host"
+	is_mounted "${DIR}/lib/modules" || \
+		mount -o bind /lib/modules "${DIR}/lib/modules"
+	is_mounted "${DIR}/usr/src" || \
+		mount -o bind /usr/src "${DIR}/usr/src"
+	is_mounted "${DIR}/usr/portage" || \
+		mount -o bind /usr/portage "${DIR}/usr/portage"
+	is_mounted "${DIR}/var/lib/layman" || \
+		mount -o bind /var/lib/layman "${DIR}/var/lib/layman"
+
+	echo "Mounting home filesystems.."
+	
+	for HOME_DIRECTORY in $HOME_DIRECTORIES
+	do
+		
+		echo "Mounting home filesystem ${HOME_DIRECTORY}.."
+
+		is_mounted "${DIR}/home/${HOME_USER}/${HOME_DIRECTORY}" || \
+			mount -o rbind "/mnt/kakitsubata/${HOME_DIRECTORY}" \
+				"${DIR}/home/${HOME_USER}/${HOME_DIRECTORY}" && \
+					mount --make-rslave "${DIR}/home/${HOME_USER}/${HOME_DIRECTORY}"
+	done
+
+	echo "Mounting public filesystems.."
+
+	is_mounted "${DIR}/mnt/public-video" || \
+		mount -o rbind /mnt/public-video "${DIR}/mnt/public-videos" && \
+			mount --make-rslave "${DIR}/mnt/public-videos"
+
+	echo "Copying files.."
+
+	cp -pf /etc/resolv.conf "${DIR}/etc" 
+	cp -pf /etc/passwd "${DIR}/etc"
+	cp -pf /etc/shadow "${DIR}/etc"
+	cp -pf /etc/group "${DIR}/etc"
+	cp -pf /etc/gshadow "${DIR}/etc"
+	cp -pf /etc/hosts "${DIR}/etc"
+	cp -Ppf /etc/localtime "${DIR}/etc"
+	cp -Ppf /etc/timezone "${DIR}/etc"
+	cp -Ppf /etc/mtab "${DIR}/etc"
+
+	echo "Done with ${DIR}."
+	exit 0
+}
+
+function stop()
+{
+	echo "Unmounting filesystems.."
+	is_mounted "${DIR}/dev/hugepages" && umount "${DIR}/dev/hugepages"
+	is_mounted "${DIR}/dev/mqueue" && umount "${DIR}/dev/mqueue"
+	is_mounted "${DIR}/dev/pts" && umount "${DIR}/dev/pts"
+	is_mounted "${DIR}/dev/shm" && umount "${DIR}/dev/shm"
+	is_mounted "${DIR}/dev" && umount "${DIR}/dev"
+	is_mounted "${DIR}/proc" && umount "${DIR}/proc"
+	is_mounted "${DIR}/sys/fs/cgroup/systemd" && umount "${DIR}/sys/fs/cgroup/systemd"
+	is_mounted "${DIR}/sys/fs/cgroup/cpuset" && umount "${DIR}/sys/fs/cgroup/cpuset"
+	is_mounted "${DIR}/sys/fs/cgroup/freezer" && umount "${DIR}/sys/fs/cgroup/freezer"
+	is_mounted "${DIR}/sys/fs/cgroup/cpu" && umount "${DIR}/sys/fs/cgroup/cpu"
+	is_mounted "${DIR}/sys/fs/cgroup" && umount "${DIR}/sys/fs/cgroup"	
+	is_mounted "${DIR}/sys/kernel/debug" && umount "${DIR}/sys/kernel/debug"
+	is_mounted "${DIR}/sys/fs/fuse/connections" && umount "${DIR}/sys/fs/fuse/connections"
+	is_mounted "${DIR}/sys" && umount "${DIR}/sys"
+	is_mounted "${DIR}/tmp" && umount "${DIR}/tmp"
+	is_mounted "${DIR}/usr/src" && umount "${DIR}/usr/src"
+	is_mounted "${DIR}/lib/modules" && umount "${DIR}/lib/modules"
+	is_mounted "${DIR}/usr/portage" && umount "${DIR}/usr/portage"
+	for USER in ${DIR}/run/user/*
+	do
+		is_mounted "${DIR}${USER}" && umount "${DIR}${USER}"
+	done
+	is_mounted "${DIR}/run" && umount "${DIR}/run"
+	is_mounted "${DIR}/var/lib/layman" && umount "${DIR}/var/lib/layman"
+	is_mounted "${DIR}/mnt/home" && umount "${DIR}/mnt/home"
+	is_mounted "${DIR}/mnt/public-video" && umount "${DIR}/mnt/public-video"
+
+
+        echo "Done with ${DIR}."
+        exit 0
+}
+
+case "$MODE" in
+        "$MODE_START")
+                start
+        ;;
+        "$MODE_STOP")
+                stop
+        ;;
+        *)
+                usage
+                exit 1
+        ;;
+esac

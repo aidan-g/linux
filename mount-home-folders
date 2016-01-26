@@ -1,0 +1,43 @@
+#!/bin/sh
+
+LOG_FILE="${HOME}/.$(basename $0).log"
+
+if [ -f "$LOG_FILE" ]
+then
+        rm "$LOG_FILE"
+fi
+
+function log()
+{
+        MESSAGE="[$(date)] => [$0]: $*"
+        echo "$MESSAGE"
+        echo "$MESSAGE" >> "$LOG_FILE"
+}
+
+DIRECTORIES="Archive Backup Documents Downloads Music Pictures Source Videos Torrents"
+for DIRECTORY in $DIRECTORIES
+do
+	log "Mounting directory ${DIRECTORY}.."
+	while [ 1 = 1 ]
+	do
+		MOUNTED=$(mount | grep "$DIRECTORY")
+		if [ ! -z "$MOUNTED" ]
+		then
+			log "${DIRECTORY} appears to be mounted."
+			break
+		fi
+		RESULT=$(mount "$HOME/$DIRECTORY" 2>&1 >/dev/null)
+		if [ ! "$?" = "0" ]
+		then
+			log "Failed to mount ${DIRECTORY}: $RESULT"
+			log "Retrying in one second.."
+			sleep 1
+			continue
+		fi
+		log "${DIRECTORY} mounted successfully."
+		break
+	done
+done
+
+log "All directories mounted."
+

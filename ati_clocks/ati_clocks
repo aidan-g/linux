@@ -1,6 +1,20 @@
 #!/bin/sh
 
-LOG_FILE="/var/log/$(basename $0).log"
+USERS=$(groups | grep "users")
+
+if [ ! -z "$USERS" ]
+then
+	LOG_DIR="$HOME/Logs"
+else
+	LOG_DIR="/var/log"
+fi
+
+if [ ! -d "$LOG_DIR" ]
+then
+	mkdir -p "$LOG_DIR"
+fi
+
+LOG_FILE="${LOG_DIR}/$(basename $0).log"
 
 if [ -f "$LOG_FILE" ]
 then
@@ -35,7 +49,7 @@ fi
 source /etc/conf.d/ati_clocks.conf
 
 ATTEMPT=0
-ATTEMPTS=10
+ATTEMPTS=100
 
 while [ 1 = 1 ]
 do
@@ -66,10 +80,10 @@ do
 		do
 			log "Trying display ${DISPLAY_NUMBER}.."
 			export DISPLAY=":$DISPLAY_NUMBER"
-			$ATICONFIG --adapter=0 --od-setclocks "$ATI_CLOCKS"
+			RESULT=$($ATICONFIG --adapter=0 --od-setclocks "$ATI_CLOCKS" 2>&1 >/dev/null)
 			if [ ! "$?" = "0" ]
 			then
-				log "$ATICONFIG failed."
+				log "$ATICONFIG failed: $RESULT"
 				continue
 			fi
 			log "$ATICONFIG succeeded."
@@ -92,10 +106,10 @@ do
 		do
 			log "Trying display ${DISPLAY_NUMBER}.."
 			export DISPLAY=":$DISPLAY_NUMBER"
-			$ATICONFIG --pplib-cmd "set fanspeed 0 ${ATI_FAN}"
+			RESULT=$($ATICONFIG --pplib-cmd "set fanspeed 0 ${ATI_FAN}" 2>&1 >/dev/null)
                 	if [ ! "$?" = "0" ]
         	        then
-	                        log "$ATICONFIG failed."
+	                        log "$ATICONFIG failed: $RESULT"
                         	continue
                 	fi
         	        log "$ATICONFIG succeeded."

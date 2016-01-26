@@ -1,0 +1,62 @@
+#!/bin/sh
+
+LOADED=$(pacmd list-modules | grep reverse-stereo)
+
+ACTION=$1
+ENABLE="on"
+DISABLE="off"
+
+function usage()
+{
+	echo "Use: $0 [on|off]"
+	exit 1
+}
+
+function migrate()
+{
+	echo "Migrating inputs.."
+	for input in $(pacmd list-sink-inputs | awk '$1 == "index:" {print $2}')
+	do
+        	pacmd move-sink-input "$input" reverse-stereo
+	done
+}
+
+function enable()
+{
+	if [ ! -z "$LOADED" ]
+	then
+		echo "Nothing to do."
+		exit 0
+	fi
+	echo "Enabling reverse stereo.."
+	pacmd load-module module-remap-sink \
+		sink_name=reverse-stereo \
+		channels=2 \
+		master_channel_map=front-right,front-left \
+		channel_map=front-left,front-right
+	pacmd set-default-sink reverse-stereo
+	migrate reverse-stereo
+}
+
+function disable()
+{
+        if [ -z "$LOADED" ]
+        then
+                echo "Nothing to do."
+                exit 0
+        fi
+	echo "Disabling reverse stereo.."
+	pacmd unload-module module-remap-sink
+}
+
+case "$ACTION" in
+	"$ENABLE")
+		enable
+	;;
+	"$DISABLE")
+		disable	
+	;;
+	*)
+		usage
+	;;
+esac

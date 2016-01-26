@@ -1,0 +1,132 @@
+#!/bin/sh
+
+function usage()
+{
+	echo "Use: $0 [path1] [path2]"
+}
+
+DIR1="$1"
+DIR2="$2"
+
+if [ ! -d "$DIR1" ] || [ ! -d "$DIR2" ]
+then
+	usage
+	exit 1
+fi
+
+IGNORED="**IGNORED**"
+CHECKSUMS1="/tmp/checksum1.$$.tmp"
+CHECKSUMS2="/tmp/checksum2.$$.tmp"
+
+echo > "$CHECKSUMS1"
+echo > "$CHECKSUMS2"
+
+echo "Calculating source checksums.."
+
+find "$DIR1" -type f -print0 | xargs -0 md5sum >> "$CHECKSUMS1"
+
+COUNT=$(wc -l "$CHECKSUMS1" | cut -d" " -f1)
+
+echo "Calculated $COUNT source checksums."
+echo "Calculating destination checksums.."
+
+find "$DIR2" -type f -print0 | xargs -0 md5sum >> "$CHECKSUMS2"
+
+COUNT=$(wc -l "$CHECKSUMS2" | cut -d" " -f1)
+
+echo "Calculated $COUNT destination checksums."
+echo "Creating source checksum map.."
+
+declare -A HASH1
+
+IFS=$'\n'; for LINE in $(cat "$CHECKSUMS1")
+do
+	VALUE=$(echo "$LINE" | cut -d" " -f1)
+	FILE=$(echo "$LINE" | cut -d" " -f2-)
+	KEY=$(basename "$FILE")
+        if [ -z "${KEY// }" ] || [ -z "${VALUE// }" ]
+        then
+                continue
+        fi
+        if [ ! -z "${HASH1["$KEY"]}" ]
+        then
+		echo "Ignoring duplicate file name: $KEY"
+		HASH1["$KEY"]="$IGNORED"
+		continue
+	fi
+	HASH1["$KEY"]="$VALUE"
+done
+
+echo "Creating destionation checksum map.."
+
+declare -A HASH2
+
+IFS=$'\n'; for LINE in $(cat "$CHECKSUMS2")
+do
+        VALUE=$(echo "$LINE" | cut -d" " -f1)
+        FILE=$(echo "$LINE" | cut -d" " -f2-)
+        KEY=$(basename "$FILE")
+	if [ -z "${KEY// }" ] || [ -z "${VALUE// }" ]
+	then
+		continue
+	fi
+	if [ ! -z "${HASH2["$KEY"]}" ]
+	then
+		echo "Ignoring duplicate file name: $KEY"
+		HASH2["$KEY"]="$IGNORED"
+		continue
+	fi
+        HASH2["$KEY"]="$VALUE"
+done
+
+echo "Comparing source checksums.."
+
+for KEY in "${!HASH1[@]}"
+do
+	VALUE1="${HASH1["$KEY"]}"
+	VALUE2="${HASH2["$KEY"]}"
+	if [ -z "$VALUE1" ]
+	then
+		echo "Source file $KEY does not exist."
+		continue
+	fi
+	if [ -z "$VALUE2" ]
+	then
+		echo "Destination file $KEY does not exist."
+	fi
+	if [ "$VALUE1" = "$VALUE2" ] || [ "$VALUE1" = "$IGNORED" ] || [ "$VALUE2" = "$IGNORED" ]
+	then
+		continue
+	fi
+	echo "$KEY differs: $VALUE1 != $VALUE2"
+done
+
+echo "Comparing destination checksums.."
+
+for KEY in "${!HASH2[@]}"
+do
+        VALUE1="${HASH1["$KEY"]}"
+        VALUE2="${HASH2["$KEY"]}"
+        if [ -z "$VALUE1" ]
+        then
+                echo "Source file $KEY does not exist."
+                continue
+        fi
+        if [ -z "$VALUE2" ]
+        then
+                echo "Destination file $KEY does not exist."
+        fi
+        if [ "$VALUE1" = "$VALUE2" ] || [ "$VALUE1" = "$IGNORED"] || [ "$VALUE2" = "$IGNORED" ]
+        then
+                continue
+        fi
+        echo "$KEY differs: $VALUE1 != $VALUE2"
+done
+
+
+echo "Cleaning up.."
+
+rm "$CHECKSUMS1"
+rm "$CHECKSUMS2"
+
+echo "All done."

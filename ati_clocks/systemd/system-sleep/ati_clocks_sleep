@@ -1,0 +1,30 @@
+#!/bin/sh
+
+
+LOG_FILE="/var/log/$(basename $0)_${1}_${2}.log"
+
+if [ -f "$LOG_FILE" ]
+then
+        rm "$LOG_FILE"
+fi
+
+function log()
+{
+        MESSAGE="[$(date)] => [$0]: $*"
+        echo "$MESSAGE"
+        echo "$MESSAGE" >> "$LOG_FILE"
+}
+
+doclocks=false
+
+case "$1 $2" in
+        "post suspend"|"post hibernate"|"post hybrid-sleep")
+                doclocks=true
+        ;;
+esac
+
+if [ "$doclocks" = true ]
+then
+        log "Restarting ati_clocks.."
+        systemctl restart ati_clocks.service
+fi
